@@ -77,5 +77,46 @@ router.get(
     res.json({ success: true, data });
   })
 );
+router.get(
+  "/summary/export/csv",
+  asyncHandler(async (req, res) => {
+    const period = String(req.query.period || "day");
+    const now = new Date();
+    const from = new Date(now);
+
+    if (period === "week") from.setDate(now.getDate() - 7);
+    else if (period === "month") from.setMonth(now.getMonth() - 1);
+    else from.setHours(0, 0, 0, 0);
+
+    const sales = await prisma.sale.findMany({
+      where: { createdAt: { gte: from, lte: now } },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const lines = [
+      "saleId,createdAt,userId,userName,userEmail,paymentMethod,subtotal,total,note",
+      ...sales.map((sale) =>
+        [
+          sale.id,
+          sale.createdAt.toISOString(),
+          sale.user.id,
+          sale.user.name,
+          sale.user.email,
+          sale.paymentMethod,
+          Number(sale.subtotal),
+          Number(sale.total),
+          (sale.note || "").replaceAll(",", " "),
+        ].join(",")
+      ),
+    ];
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=sales-summary-${period}.csv`);
+    res.status(200).send(lines.join("\n"));
+  })
+);
 
 export default router;

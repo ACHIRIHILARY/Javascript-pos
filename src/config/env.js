@@ -10,4 +10,6 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || "change-me-to-32+chars-secret",
   jwtExpiry: process.env.JWT_EXPIRY || "8h",
   corsOrigin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  rateLimitMax: Number(process.env.RATE_LIMIT_MAX || 300),
 };

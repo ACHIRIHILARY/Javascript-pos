@@ -56,6 +56,37 @@ router.post(
     res.status(201).json({ success: true, data: product });
   })
 );
+router.get(
+  "/export/csv",
+  rbacMiddleware(["OWNER", "ADMIN"]),
+  asyncHandler(async (_req, res) => {
+    const products = await prisma.product.findMany({
+      where: { deletedAt: null },
+      include: { category: true },
+      orderBy: { name: "asc" },
+    });
+    const lines = [
+      "id,name,barcode,category,sellingPrice,stock,lowStockThreshold,createdAt,updatedAt",
+      ...products.map((product) =>
+        [
+          product.id,
+          product.name,
+          product.barcode || "",
+          product.category?.name || "",
+          Number(product.sellingPrice),
+          product.stock,
+          product.lowStockThreshold,
+          product.createdAt.toISOString(),
+          product.updatedAt.toISOString(),
+        ].join(",")
+      ),
+    ];
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=products.csv");
+    res.status(200).send(lines.join("\n"));
+  })
+);
 
 router.get(
   "/:id",
@@ -103,6 +134,65 @@ router.delete(
   })
 );
 
+router.post(
+  "/import",
+  rbacMiddleware(["OWNER", "ADMIN"]),
+  express.text({ type: ["text/csv", "text/plain"] }),
+  asyncHandler(async (req, res) => {
+    const csv = String(req.body || "").trim();
+    if (!csv) {
+      throw new AppError("CSV body is required.", 400, "VALIDATION_ERROR");
+    }
+
+    const lines = csv.split(/\r?\n/).filter(Boolean);
+    if (lines.length < 2) {
+      throw new AppError("CSV must include headers and at least one row.", 400, "VALIDATION_ERROR");
+    }
+
+    const headers = lines[0].split(",").map((value) => value.trim());
+    const required = ["name", "sellingPrice", "stock", "category"];
+    for (const field of required) {
+      if (!headers.includes(field)) {
+        throw new AppError(`Missing CSV header: ${field}.`, 400, "VALIDATION_ERROR");
+      }
+    }
+
+    const imported = await prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const row of lines.slice(1)) {
+        const values = row.split(",").map((value) => value.trim());
+        const record = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+
+        const category = await tx.category.upsert({
+          where: { name: record.category },
+          update: {},
+          create: { name: record.category },
+        });
+
+        const product = await tx.product.create({
+          data: {
+            name: record.name,
+            barcode: record.barcode || null,
+            categoryId: category.id,
+            sellingPrice: Number(record.sellingPrice),
+            stock: Number(record.stock),
+            lowStockThreshold: Number(record.lowStockThreshold || 5),
+          },
+        });
+        results.push(product);
+      }
+      return results;
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        importedCount: imported.length,
+        items: imported,
+      },
+    });
+  })
+);
 router.post(
   "/:id/adjust",
   rbacMiddleware(["OWNER", "ADMIN"]),
