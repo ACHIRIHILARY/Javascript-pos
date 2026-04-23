@@ -39,7 +39,7 @@ async function bootstrap() {
 }
 
 bootstrap();
-});
+//});
 
 const gracefulShutdown = async () => {
   logger.info("shutdown_started");
