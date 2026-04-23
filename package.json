@@ -1,0 +1,39 @@
+{
+  "name": "javascript-pos",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "prisma": "prisma",
+    "db:push": "npx prisma db push",
+    "db:seed": "npx prisma db seed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ACHIRIHILARY/Javascript-pos.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/ACHIRIHILARY/Javascript-pos/issues"
+  },
+  "homepage": "https://github.com/ACHIRIHILARY/Javascript-pos#readme",
+  "dependencies": {
+    "@prisma/client": "^5.10.0",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prisma": "^5.10.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+}
